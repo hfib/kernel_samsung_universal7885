@@ -41,7 +41,7 @@ const char *security_type_str(u8 value);
 #define _WPA_IE_ID_	0xdd
 #define _WPA2_IE_ID_	0x30
 
-#define RTW_SHA256_MAC_LEN 32
+#define SHA256_MAC_LEN 32
 #define AES_BLOCK_SIZE 16
 #define AES_PRIV_SIZE (4 * 44)
 
@@ -176,6 +176,9 @@ struct security_priv {
 	u8	bcheck_grpkey;
 	u8	bgrpkey_handshake;
 
+	u8	auth_alg;
+	u8	auth_type;
+	u8	extauth_status;
 	/* u8	packet_cnt; */ /* unused, removed */
 
 	s32	sw_encrypt;/* from registry_priv */
@@ -189,9 +192,6 @@ struct security_priv {
 	u32 ndisencryptstatus;	/* NDIS_802_11_ENCRYPTION_STATUS */
 
 	NDIS_802_11_WEP ndiswep;
-#ifdef PLATFORM_WINDOWS
-	u8 KeyMaterial[16];/* variable length depending on above field. */
-#endif
 
 	u8 assoc_info[600];
 	u8 szofcapability[256]; /* for wpa2 usage */
@@ -249,11 +249,13 @@ struct security_priv {
 #define SEC_IS_BIP_KEY_INSTALLED(sec) _FALSE
 #endif
 
-struct rtw_sha256_state {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0))
+struct sha256_state {
 	u64 length;
 	u32 state[8], curlen;
 	u8 buf[64];
 };
+#endif
 
 #define GET_ENCRY_ALGO(psecuritypriv, psta, encry_algo, bmcst)\
 	do {\
@@ -477,7 +479,7 @@ u32	rtw_BIP_verify(_adapter *padapter, u8 *whdr_pos, sint flen
 	, const u8 *key, u16 id, u64* ipn);
 #endif
 #ifdef CONFIG_TDLS
-void wpa_tdls_generate_tpk(_adapter *padapter, PVOID sta);
+void wpa_tdls_generate_tpk(_adapter *padapter, void *sta);
 int wpa_tdls_ftie_mic(u8 *kck, u8 trans_seq,
 			u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie,
 			u8 *mic);
@@ -493,5 +495,11 @@ u8 rtw_handle_tkip_countermeasure(_adapter *adapter, const char *caller);
 #ifdef CONFIG_WOWLAN
 u16 rtw_calc_crc(u8  *pdata, int length);
 #endif /*CONFIG_WOWLAN*/
+
+#define rtw_sec_chk_auth_alg(a, s) \
+	((a)->securitypriv.auth_alg == (s))
+
+#define rtw_sec_chk_auth_type(a, s) \
+	((a)->securitypriv.auth_type == (s))
 
 #endif /* __RTL871X_SECURITY_H_ */
